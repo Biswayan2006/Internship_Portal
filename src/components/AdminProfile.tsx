@@ -28,8 +28,11 @@ const AdminProfile: React.FC<AdminProfileProps> = ({ profile, onProfileChange })
       // Simulate upload
       setTimeout(() => {
         setAvatarUploading(false);
-        setLocalProfile({ ...localProfile, avatar: URL.createObjectURL(e.target.files![0]) });
-        onProfileChange({ ...localProfile, avatar: URL.createObjectURL(e.target.files![0]) });
+        const file = e.target.files[0];
+        const objectUrl = URL.createObjectURL(file);
+        const updatedProfile = { ...localProfile, avatar: objectUrl };
+        setLocalProfile(updatedProfile);
+        onProfileChange(updatedProfile);
       }, 1200);
     }
   };
