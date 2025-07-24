@@ -1,14 +1,14 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Cookies from 'js-cookie';
+import { createContext, useContext, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import { signIn, signOut, useSession } from 'next-auth/react';
 
 interface AuthContextType {
   isLoggedIn: boolean;
   userRole: string | null;
   username: string | null;
-  login: (username: string, password: string, rememberMe: boolean) => Promise<boolean>;
+  login: (provider?: string, credentials?: Record<string, any>) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -28,84 +28,43 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [username, setUsername] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { data: session, status } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const isLoading = status === 'loading';
+  const isLoggedIn = status === 'authenticated';
+  
+  // Extract user information from session
+  const userRole = session?.user?.role || null;
+  const username = session?.user?.email || null;
 
-  // Check for existing session on component mount
-  useEffect(() => {
-    const loggedIn = Cookies.get('isLoggedIn') === 'true';
-    const role = Cookies.get('userRole');
-    const user = Cookies.get('username');
-
-    setIsLoggedIn(loggedIn);
-    setUserRole(role || null);
-    setUsername(user || null);
-    setIsLoading(false);
-  }, []);
-
-  const login = async (username: string, password: string, rememberMe: boolean): Promise<boolean> => {
-    setIsLoading(true);
+  const login = async (provider = 'google', credentials?: Record<string, any>): Promise<boolean> => {
     try {
-      // In a real application, this would be an API call to your authentication endpoint
-      // For now, we'll simulate authentication with hardcoded values
-      let success = false;
-      let role = '';
+      const options: any = { redirect: false };
       
-      if (username === 'admin@example.com' && password === 'admin123') {
-        // Admin login
-        role = 'admin';
-        success = true;
-      } else if (username === 'user@example.com' && password === 'user123') {
-        // Regular user login
-        role = 'user';
-        success = true;
+      // Add credentials if provided
+      if (credentials && provider === 'credentials') {
+        options.email = credentials.email;
+        options.password = credentials.password;
       }
       
-      if (success) {
-        setUserRole(role);
-        setIsLoggedIn(true);
-        setUsername(username);
-        
-        // Set cookies
-        const expiryDays = rememberMe ? 30 : 1;
-        Cookies.set('isLoggedIn', 'true', { expires: expiryDays });
-        Cookies.set('userRole', role, { expires: expiryDays });
-        Cookies.set('username', username, { expires: expiryDays });
-        
-        // Check if there's a callback URL to redirect to after login
-        const callbackUrl = searchParams.get('callbackUrl');
-        if (callbackUrl) {
-          router.push(callbackUrl);
-        } else {
-          // Default redirects based on role
-          router.push(role === 'admin' ? '/admin/internship-dashboard' : '/internship');
-        }
-        return true;
+      const result = await signIn(provider, options);
+      
+      if (result?.error) {
+        console.error('Login error:', result.error);
+        return false;
       }
-      return false;
+      
+      // NextAuth will handle the session
+      // Redirect will be handled by middleware
+      return true;
     } catch (error) {
       console.error('Login error:', error);
       return false;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const logout = () => {
-    setIsLoggedIn(false);
-    setUserRole(null);
-    setUsername(null);
-    
-    // Remove cookies
-    Cookies.remove('isLoggedIn');
-    Cookies.remove('userRole');
-    Cookies.remove('username');
-    
-    router.push('/login');
+    signOut({ callbackUrl: '/login' });
   };
 
   const value = {

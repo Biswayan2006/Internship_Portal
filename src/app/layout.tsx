@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { Playfair_Display, Montserrat, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { AuthProvider } from "@/contexts/AuthContext";
-import Navbar from "@/components/Navbar";
+import SessionProviderWrapper from '@/components/SessionProviderWrapper';
+import { AuthProvider } from '@/contexts/AuthContext';
+import Navbar from '@/components/Navbar';
 
 const playfair = Playfair_Display({
   variable: "--font-heading",
@@ -40,12 +41,14 @@ export default function RootLayout({
         className={`${playfair.variable} ${montserrat.variable} ${robotoMono.variable} font-body antialiased`}
       >
         <ThemeProvider>
-          <AuthProvider>
-            <Navbar />
-            <main>
-              {children}
-            </main>
-          </AuthProvider>
+          <SessionProviderWrapper>
+            <AuthProvider>
+              <Navbar />
+              <main>
+                {children}
+              </main>
+            </AuthProvider>
+          </SessionProviderWrapper>
         </ThemeProvider>
       </body>
     </html>

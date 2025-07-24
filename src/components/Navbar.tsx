@@ -41,25 +41,14 @@ export default function Navbar() {
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-3">
           <div className="relative w-8 h-8 flex-shrink-0">
-            {resolvedTheme === 'dark' ? (
-              <Image 
-                src="/iic-logo-dark.svg" 
-                alt="InternsOnBoard Logo" 
-                width={32}
-                height={32}
-                priority 
-                className="object-contain" 
-              />
-            ) : (
-              <Image 
-                src="/iic-logo-light.svg" 
-                alt="InternsOnBoard Logo" 
-                width={32}
-                height={32}
-                priority 
-                className="object-contain" 
-              />
-            )}
+            <Image 
+              src={resolvedTheme === 'dark' ? "/iic-logo-dark.svg" : "/iic-logo-light.svg"} 
+              alt="InternsOnBoard Logo" 
+              width={32}
+              height={32}
+              priority 
+              className="object-contain" 
+            />
           </div>
           <span className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-white font-heading ml-2">InternsOnBoard</span>
         </Link>

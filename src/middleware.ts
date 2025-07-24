@@ -1,39 +1,47 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
-export function middleware(request: NextRequest) {
+// Define paths that don't require authentication
+const publicPaths = ['/login', '/', '/about', '/contact'];
+
+// Define paths that require admin role
+const adminPaths = ['/admin', '/admin/internship-dashboard'];
+
+export async function middleware(request: NextRequest) {
   // Get the path of the request
   const path = request.nextUrl.pathname;
 
-  // Define public paths that don't require authentication
-  const isPublicPath = path === '/login' || path === '/' || 
-                      path === '/internship' || path.startsWith('/internship/') && !path.includes('/new');
+  // Special case for internship listings which are public
+  const isInternshipListing = path === '/internship' || 
+                             (path.startsWith('/internship/') && !path.includes('/new'));
 
-  // Get authentication status from cookies
-  const isAuthenticated = request.cookies.get('isLoggedIn')?.value === 'true';
-  const userRole = request.cookies.get('userRole')?.value;
+  // Get authentication status from NextAuth token
+  const token = await getToken({ 
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET
+  });
+  
+  const isAuthenticated = !!token;
+  const userRole = token?.role as string || null;
 
-  // Redirect logic
-  if (isPublicPath && isAuthenticated) {
-    // If user is authenticated and trying to access login page, redirect to appropriate dashboard
-    if (path === '/login') {
-      return NextResponse.redirect(new URL(
-        userRole === 'admin' ? '/admin/internship-dashboard' : '/internship',
-        request.url
-      ));
+  // Handle public paths
+  if (publicPaths.includes(path) || isInternshipListing) {
+    // If user is authenticated and trying to access login page, redirect to internship page
+    if (path === '/login' && isAuthenticated) {
+      return NextResponse.redirect(new URL('/internship', request.url));
     }
+    return NextResponse.next();
   }
 
-  // If user is not authenticated and trying to access protected route, redirect to login
-  if (!isPublicPath && !isAuthenticated) {
-    // Store the original URL to redirect back after login
-    const url = new URL('/login', request.url);
-    url.searchParams.set('callbackUrl', request.nextUrl.pathname);
-    return NextResponse.redirect(url);
+  // Check if the user is authenticated for protected routes
+  if (!isAuthenticated) {
+    const from = request.nextUrl.pathname;
+    return NextResponse.redirect(new URL(`/login?from=${encodeURIComponent(from)}`, request.url));
   }
 
-  // If user is not an admin and trying to access admin routes, redirect to internship page
-  if (path.startsWith('/admin') && userRole !== 'admin') {
+  // If user is trying to access admin routes but is not an admin
+  if (adminPaths.includes(path) && userRole !== 'admin') {
     return NextResponse.redirect(new URL('/internship', request.url));
   }
 
